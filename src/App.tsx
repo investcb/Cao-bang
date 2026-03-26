@@ -57,25 +57,48 @@ export default function App() {
   const stats = useMemo(() => {
     const pmTotal = filteredProjects.reduce((acc, p) => acc + p.pmCapital, 0);
     const provinceTotal = filteredProjects.reduce((acc, p) => acc + p.provinceCapital, 0);
+    const carriedOverPMTotal = filteredProjects.reduce((acc, p) => acc + p.carriedOverPMCapital, 0);
+    const carriedOverProvinceTotal = filteredProjects.reduce((acc, p) => acc + p.carriedOverProvinceCapital, 0);
+    
+    const pmAssigned = filteredProjects.reduce((acc, p) => acc + p.pmAssigned, 0);
+    const provinceAssigned = filteredProjects.reduce((acc, p) => acc + p.provinceAssigned, 0);
+    const carriedOverPMAssigned = filteredProjects.reduce((acc, p) => acc + p.carriedOverPMAssigned, 0);
+    const carriedOverProvinceAssigned = filteredProjects.reduce((acc, p) => acc + p.carriedOverProvinceAssigned, 0);
+
     const assignedTotal = filteredProjects.reduce((acc, p) => acc + p.assignedCapital, 0);
     const unassignedTotal = filteredProjects.reduce((acc, p) => acc + p.unassignedCapital, 0);
     const totalDis = filteredProjects.reduce((acc, p) => acc + p.disbursed, 0);
+    const pmDis2026 = filteredProjects.reduce((acc, p) => acc + p.pmDisbursed2026, 0);
+    const provinceDis2026 = filteredProjects.reduce((acc, p) => acc + p.provinceDisbursed2026, 0);
+    const carriedOverPMDis = filteredProjects.reduce((acc, p) => acc + p.carriedOverPMDisbursed, 0);
+    const carriedOverProvinceDis = filteredProjects.reduce((acc, p) => acc + p.carriedOverProvinceDisbursed, 0);
+    
+    const totalDis2026 = pmDis2026 + provinceDis2026;
+    const totalDisCarriedOver = carriedOverPMDis + carriedOverProvinceDis;
+
     const treasuryTotalDis = filteredProjects.reduce((acc, p) => acc + p.treasuryDisbursed, 0);
+    const treasuryPMDis2026 = filteredProjects.reduce((acc, p) => acc + p.treasuryPMDisbursed2026, 0);
+    const treasuryProvinceDis2026 = filteredProjects.reduce((acc, p) => acc + p.treasuryProvinceDisbursed2026, 0);
+    const treasuryCarriedOverPMDis = filteredProjects.reduce((acc, p) => acc + p.treasuryCarriedOverPMDisbursed, 0);
+    const treasuryCarriedOverProvinceDis = filteredProjects.reduce((acc, p) => acc + p.treasuryCarriedOverProvinceDisbursed, 0);
+    
+    const treasuryTotalDis2026 = treasuryPMDis2026 + treasuryProvinceDis2026;
+    const treasuryTotalDisCarriedOver = treasuryCarriedOverPMDis + treasuryCarriedOverProvinceDis;
     
     const disProvince = filteredProjects.reduce((acc, p) => {
-      const totalCap = p.pmCapital + p.provinceCapital;
-      const ratio = totalCap > 0 ? p.provinceCapital / totalCap : 0;
+      const totalCap = p.pmCapital + p.provinceCapital + p.carriedOverPMCapital + p.carriedOverProvinceCapital;
+      const ratio = totalCap > 0 ? (p.provinceCapital + p.carriedOverProvinceCapital) / totalCap : 0;
       return acc + (p.disbursed * ratio);
     }, 0);
     const disPM = filteredProjects.reduce((acc, p) => {
-      const totalCap = p.pmCapital + p.provinceCapital;
-      const ratio = totalCap > 0 ? p.pmCapital / totalCap : 0;
+      const totalCap = p.pmCapital + p.provinceCapital + p.carriedOverPMCapital + p.carriedOverProvinceCapital;
+      const ratio = totalCap > 0 ? (p.pmCapital + p.carriedOverPMCapital) / totalCap : 0;
       return acc + (p.disbursed * ratio);
     }, 0);
     
-    const rateProvince = provinceTotal > 0 ? (disProvince / provinceTotal) * 100 : 0;
-    const ratePM = pmTotal > 0 ? (disPM / pmTotal) * 100 : 0;
-    const rateTreasury = provinceTotal > 0 ? (treasuryTotalDis / provinceTotal) * 100 : 0;
+    const rateProvince = (provinceTotal + carriedOverProvinceTotal) > 0 ? (disProvince / (provinceTotal + carriedOverProvinceTotal)) * 100 : 0;
+    const ratePM = (pmTotal + carriedOverPMTotal) > 0 ? (disPM / (pmTotal + carriedOverPMTotal)) * 100 : 0;
+    const rateTreasury = (provinceTotal + carriedOverProvinceTotal) > 0 ? (treasuryTotalDis / (provinceTotal + carriedOverProvinceTotal)) * 100 : 0;
     
     // Get the latest reconciliation date
     const latestDate = filteredProjects.length > 0 
@@ -86,21 +109,32 @@ export default function App() {
         })[0].treasuryReconciliationDate
       : 'N/A';
     
-    const totalCapital = pmTotal + provinceTotal;
+    const total2026 = pmTotal + provinceTotal;
+    const totalCarriedOver = carriedOverPMTotal + carriedOverProvinceTotal;
+    const totalCapital = total2026 + totalCarriedOver;
+
     const rateTotalCdt = totalCapital > 0 ? (totalDis / totalCapital) * 100 : 0;
     const rateTotalTreasury = totalCapital > 0 ? (treasuryTotalDis / totalCapital) * 100 : 0;
     
     // Re-calculating ratePM for the "Theo số giao của Thủ tướng" line specifically
-    const ratePM_Allocation = pmTotal > 0 ? (totalDis / pmTotal) * 100 : 0;
+    const ratePM_Allocation = (pmTotal + carriedOverPMTotal) > 0 ? (totalDis / (pmTotal + carriedOverPMTotal)) * 100 : 0;
 
     const statusCounts = filteredProjects.reduce((acc, p) => {
       acc[p.status] = (acc[p.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     return { 
-      pmTotal, provinceTotal, totalCapital, assignedTotal, unassignedTotal, totalDis, 
-      treasuryTotalDis, rateProvince, ratePM, rateTreasury, rateTotalCdt, rateTotalTreasury,
+      pmTotal, provinceTotal, carriedOverPMTotal, carriedOverProvinceTotal,
+      pmAssigned, provinceAssigned, carriedOverPMAssigned, carriedOverProvinceAssigned,
+      total2026, totalCarriedOver,
+      combinedProvinceTotal: provinceTotal + carriedOverProvinceTotal,
+      combinedPMTotal: pmTotal + carriedOverPMTotal,
+      totalCapital, assignedTotal, unassignedTotal, totalDis, totalDis2026, totalDisCarriedOver,
+      pmDis2026, provinceDis2026, carriedOverPMDis, carriedOverProvinceDis,
+      treasuryTotalDis, treasuryTotalDis2026, treasuryTotalDisCarriedOver,
+      treasuryPMDis2026, treasuryProvinceDis2026, treasuryCarriedOverPMDis, treasuryCarriedOverProvinceDis,
+      rateProvince, ratePM, rateTreasury, rateTotalCdt, rateTotalTreasury,
       latestDate, statusCounts, disProvince, disPM, ratePM_Allocation
     };
   }, [filteredProjects]);
@@ -353,8 +387,8 @@ export default function App() {
       </header>
 
       <main ref={dashboardRef} className="flex-1 max-w-7xl mx-auto w-full p-6 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Summary Cards - Top Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {/* Card 1: Tổng Kế Hoạch Vốn */}
           <div className="glass-card p-0 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500 border-indigo-100/50">
             <div className="p-6 pb-0 flex justify-between items-center">
@@ -374,76 +408,123 @@ export default function App() {
             </div>
 
             <div className="flex-1 flex flex-col pt-8">
-              {/* Main Section: Thông tin quan trọng nhất */}
-              <div className="px-6 pb-8 space-y-6">
+              {/* Main Section: Grand Total */}
+              <div className="px-6 pb-6 border-b border-slate-100">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-bold rounded uppercase">Tổng cộng kế hoạch</span>
+                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-bold rounded uppercase">Tổng cộng kế hoạch vốn</span>
                   </div>
                   <div className="flex items-baseline gap-1">
                     <span className="text-6xl font-black text-slate-900 tracking-tighter drop-shadow-sm">{stats.totalCapital.toLocaleString()}</span>
                     <span className="text-xl font-bold text-indigo-600 uppercase">tỷ</span>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-white transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Ngân sách ĐP (NSĐP)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-slate-800 font-mono">{stats.provinceTotal.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-slate-400 uppercase">tỷ</span>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-white transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Ngân sách TW (NSTW)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-slate-700 font-mono">{stats.pmTotal.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-slate-400 uppercase">tỷ</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Secondary Section: Tình hình phân bổ (Ít quan trọng hơn) */}
-              <div className="mt-auto bg-slate-50/80 border-t border-dashed border-slate-200 p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-white text-slate-500 text-[9px] font-bold rounded uppercase border border-slate-200 shadow-sm">Tình hình phân bổ</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Đã giao</span>
+              {/* Breakdown Section: 2026 vs Carried Over */}
+              <div className="grid grid-cols-2 divide-x divide-slate-100">
+                {/* Vốn năm 2026 */}
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Vốn năm 2026</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-slate-800 font-mono">{stats.total2026.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase">tỷ</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-rose-400 rounded-full" />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Chưa giao</span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {/* NSTW 2026 */}
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-white transition-colors space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">NSTW</span>
+                        <span className="text-sm font-black text-slate-700 font-mono">{stats.pmTotal.toLocaleString()} tỷ</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50">
+                        <div>
+                          <p className="text-[8px] text-slate-400 uppercase font-bold">Đã giao</p>
+                          <p className="text-[10px] font-bold text-emerald-600">{stats.pmAssigned.toLocaleString()} tỷ</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] text-slate-400 uppercase font-bold">Chưa giao</p>
+                          <p className="text-[10px] font-bold text-rose-500">{(stats.pmTotal - stats.pmAssigned).toLocaleString()} tỷ</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NSĐP 2026 */}
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-white transition-colors space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">NSĐP</span>
+                        <span className="text-sm font-black text-slate-700 font-mono">{stats.provinceTotal.toLocaleString()} tỷ</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50">
+                        <div>
+                          <p className="text-[8px] text-slate-400 uppercase font-bold">Đã giao</p>
+                          <p className="text-[10px] font-bold text-emerald-600">{stats.provinceAssigned.toLocaleString()} tỷ</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] text-slate-400 uppercase font-bold">Chưa giao</p>
+                          <p className="text-[10px] font-bold text-rose-500">{(stats.provinceTotal - stats.provinceAssigned).toLocaleString()} tỷ</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="relative h-3 bg-white rounded-full overflow-hidden shadow-sm border border-slate-200 p-0.5">
-                  <div 
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" 
-                    style={{ width: `${(stats.assignedTotal / stats.totalCapital) * 100}%` }}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">Số đã giao chi tiết</p>
-                    <p className="text-lg font-black text-emerald-600 font-mono">{stats.assignedTotal.toLocaleString()} <span className="text-[10px] font-bold uppercase">tỷ</span></p>
+                {/* Vốn kéo dài */}
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Vốn kéo dài từ 2025</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-slate-800 font-mono">{stats.totalCarriedOver.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase">tỷ</span>
+                    </div>
                   </div>
-                  <div className="text-right space-y-0.5">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">Số chưa giao</p>
-                    <p className="text-lg font-black text-rose-500 font-mono">{stats.unassignedTotal.toLocaleString()} <span className="text-[10px] font-bold uppercase">tỷ</span></p>
+                  
+                  <div className="space-y-3">
+                    {/* NSTW Carried Over */}
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100/50 group-hover:bg-amber-50/50 transition-colors space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-amber-600/70 uppercase">NSTW</span>
+                        <span className="text-sm font-black text-slate-700 font-mono">{stats.carriedOverPMTotal.toLocaleString()} tỷ</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-amber-200/30">
+                        <div>
+                          <p className="text-[8px] text-amber-600/50 uppercase font-bold">Đã giao</p>
+                          <p className="text-[10px] font-bold text-emerald-600">{stats.carriedOverPMAssigned.toLocaleString()} tỷ</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] text-amber-600/50 uppercase font-bold">Chưa giao</p>
+                          <p className="text-[10px] font-bold text-rose-500">{(stats.carriedOverPMTotal - stats.carriedOverPMAssigned).toLocaleString()} tỷ</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NSĐP Carried Over */}
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100/50 group-hover:bg-amber-50/50 transition-colors space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-amber-600/70 uppercase">NSĐP</span>
+                        <span className="text-sm font-black text-slate-700 font-mono">{stats.carriedOverProvinceTotal.toLocaleString()} tỷ</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-amber-200/30">
+                        <div>
+                          <p className="text-[8px] text-amber-600/50 uppercase font-bold">Đã giao</p>
+                          <p className="text-[10px] font-bold text-emerald-600">{stats.carriedOverProvinceAssigned.toLocaleString()} tỷ</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] text-amber-600/50 uppercase font-bold">Chưa giao</p>
+                          <p className="text-[10px] font-bold text-rose-500">{(stats.carriedOverProvinceTotal - stats.carriedOverProvinceAssigned).toLocaleString()} tỷ</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Kết quả Giải Ngân (CĐT vs Kho bạc) */}
+          {/* Card 2: Kết quả Giải Ngân (Tổng hợp) */}
           <div className="glass-card p-0 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500 border-emerald-100/50">
             <div className="p-6 pb-0 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -452,7 +533,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Kết quả Giải Ngân</h3>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Cập nhật: {stats.latestDate}</p>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Toàn bộ nguồn vốn</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
@@ -461,96 +542,203 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col pt-8">
-              {/* Main Section: CĐT Báo cáo */}
-              <div className="px-6 pb-8 space-y-6">
+            <div className="flex-1 flex flex-col pt-8 p-6 space-y-8">
+              <div className="space-y-6">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded uppercase">Chủ đầu tư báo cáo</span>
-                    </div>
+                    <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Tổng cộng giải ngân (2026 + Kéo dài)</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-6xl font-black text-slate-900 tracking-tighter drop-shadow-sm">{stats.rateTotalCdt.toFixed(1)}</span>
-                      <span className="text-2xl font-bold text-emerald-600">%</span>
+                      <span className="text-7xl font-black text-slate-900 tracking-tighter">{stats.rateTotalCdt.toFixed(1)}</span>
+                      <span className="text-3xl font-bold text-emerald-600">%</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Giá trị giải ngân</p>
-                    <p className="text-3xl font-mono font-bold text-slate-800 tracking-tight">{stats.totalDis.toLocaleString()}<span className="text-xs font-sans font-medium text-slate-400 ml-1 uppercase">tỷ</span></p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Tổng giải ngân (CĐT)</p>
+                    <p className="text-4xl font-mono font-bold text-slate-800">{stats.totalDis.toLocaleString()}<span className="text-xs ml-1 uppercase">tỷ</span></p>
                   </div>
                 </div>
 
-                <div className="relative h-5 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 p-1">
+                {/* Progress Bar */}
+                <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-200 shadow-inner">
                   <div 
-                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out relative shadow-[0_0_10px_rgba(16,185,129,0.3)]" 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000 ease-out"
                     style={{ width: `${stats.rateTotalCdt}%` }}
-                  >
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px] opacity-20" />
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
-                  </div>
-                </div>
-
-                {/* Chi tiết theo nguồn vốn (CĐT báo cáo) */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 group/item hover:bg-indigo-50 transition-colors">
-                    <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1 tracking-wider">Giải ngân NSĐP</p>
-                    <div className="flex justify-between items-end">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black text-indigo-700 font-mono">{stats.disProvince.toLocaleString()}</span>
-                        <span className="text-[9px] font-bold text-indigo-400 uppercase">tỷ</span>
-                      </div>
-                      <span className="text-xs font-bold text-indigo-600">{stats.rateProvince.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-100/50 group/item hover:bg-amber-50 transition-colors">
-                    <p className="text-[9px] font-bold text-amber-500 uppercase mb-1 tracking-wider">Giải ngân NSTW</p>
-                    <div className="flex justify-between items-end">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black text-amber-700 font-mono">{stats.disPM.toLocaleString()}</span>
-                        <span className="text-[9px] font-bold text-amber-500 uppercase">tỷ</span>
-                      </div>
-                      <span className="text-xs font-bold text-amber-600">{stats.ratePM.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Secondary Section: Kho bạc đối chiếu */}
-              <div className="mt-auto bg-rose-50/40 border-t border-dashed border-rose-100 p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-white text-rose-600 text-[9px] font-bold rounded uppercase border border-rose-100 shadow-sm">Kho bạc đối chiếu</span>
-                    <span className="text-[10px] font-medium text-slate-400 italic">TABMIS</span>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-slate-700 font-mono">{stats.rateTotalTreasury.toFixed(1)}</span>
-                    <span className="text-sm font-bold text-rose-500">%</span>
-                  </div>
-                </div>
-                
-                <div className="h-2 bg-white rounded-full overflow-hidden shadow-sm border border-rose-100/50">
-                  <div 
-                    className="h-full bg-rose-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(244,63,94,0.2)]" 
-                    style={{ width: `${stats.rateTotalTreasury}%` }}
                   />
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-medium text-slate-400 italic">Số liệu khớp nối hệ thống</span>
-                  <span className="text-xs font-bold text-slate-600 font-mono">{stats.treasuryTotalDis.toLocaleString()} tỷ</span>
+                {/* Treasury Overall */}
+                <div className="p-5 bg-rose-50/50 rounded-2xl border border-rose-200/50 flex justify-between items-center shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm border border-rose-100">
+                      <TrendingUp className="w-4 h-4 text-rose-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-rose-600 uppercase">Kho bạc đối chiếu (Tổng)</p>
+                      <p className="text-lg font-bold text-slate-700 font-mono">{stats.treasuryTotalDis.toLocaleString()} tỷ</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-rose-500 font-mono">{stats.rateTotalTreasury.toFixed(1)}%</p>
+                    <p className="text-[9px] font-bold text-rose-400 uppercase">Tỷ lệ TABMIS</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Tỷ lệ theo số giao của Thủ tướng - Chuyển xuống dưới cùng */}
-              <div className="px-6 py-3 bg-slate-100/50 border-t border-slate-200">
+              {/* Tỷ lệ theo số vốn của Thủ tướng giao năm 2026 */}
+              <div className="mt-auto p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <div className="p-1 bg-white rounded-md shadow-sm border border-slate-100">
-                      <Info className="w-3 h-3 text-emerald-500" />
-                    </div>
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">Tỷ lệ theo số giao của Thủ tướng</span>
+                    <Info className="w-4 h-4 text-emerald-500" />
+                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Tỷ lệ theo số vốn của Thủ tướng giao năm 2026</span>
                   </div>
-                  <span className="text-xs font-black text-slate-700 font-mono">{stats.ratePM_Allocation.toFixed(1)}%</span>
+                  <span className="text-lg font-black text-slate-800 font-mono">{stats.ratePM_Allocation.toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Chi tiết giải ngân (2026 & Kéo dài) - Bottom Row */}
+        <div className="glass-card p-0 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500 border-indigo-100/50">
+          <div className="p-6 pb-0 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform duration-500">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Chi tiết giải ngân</h3>
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Phân loại theo nguồn vốn</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100">
+              <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold uppercase">Detail</span>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+              {/* Section 1: Vốn năm 2026 */}
+              <div className="p-6 space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Giải ngân vốn năm 2026</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-slate-900 tracking-tighter">{(stats.total2026 > 0 ? (stats.totalDis2026 / stats.total2026) * 100 : 0).toFixed(1)}</span>
+                      <span className="text-xl font-bold text-emerald-600">%</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Tổng giải ngân (CĐT)</p>
+                    <p className="text-2xl font-mono font-bold text-slate-800">{stats.totalDis2026.toLocaleString()}<span className="text-[10px] ml-1 uppercase">tỷ</span></p>
+                  </div>
+                </div>
+
+                {/* Breakdown 2026 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">NSTW</span>
+                      <span className="text-xs font-black text-slate-700 font-mono">{stats.pmDis2026.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                      <span className="text-[9px] text-slate-400 uppercase font-bold">Tỷ lệ</span>
+                      <span className="text-[10px] font-bold text-indigo-600">{(stats.pmTotal > 0 ? (stats.pmDis2026 / stats.pmTotal) * 100 : 0).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">NSĐP</span>
+                      <span className="text-xs font-black text-slate-700 font-mono">{stats.provinceDis2026.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                      <span className="text-[9px] text-slate-400 uppercase font-bold">Tỷ lệ</span>
+                      <span className="text-[10px] font-bold text-indigo-600">{(stats.provinceTotal > 0 ? (stats.provinceDis2026 / stats.provinceTotal) * 100 : 0).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Treasury 2026 */}
+                <div className="p-3 bg-rose-50/30 rounded-xl border border-rose-100/50 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 bg-white text-rose-600 text-[8px] font-bold rounded uppercase border border-rose-100 shadow-sm">Kho bạc đối chiếu</span>
+                      <span className="text-[10px] font-bold text-slate-600 font-mono">{stats.treasuryTotalDis2026.toLocaleString()} tỷ</span>
+                    </div>
+                    <span className="text-[10px] font-black text-rose-500 font-mono">{(stats.total2026 > 0 ? (stats.treasuryTotalDis2026 / stats.total2026) * 100 : 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-rose-100/30">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] text-rose-400 uppercase font-bold">NSTW</span>
+                      <span className="text-[9px] font-bold text-slate-600 font-mono">{stats.treasuryPMDis2026.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] text-rose-400 uppercase font-bold">NSĐP</span>
+                      <span className="text-[9px] font-bold text-slate-600 font-mono">{stats.treasuryProvinceDis2026.toLocaleString()} tỷ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Vốn kéo dài */}
+              <div className="p-6 space-y-4 bg-amber-50/10">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Giải ngân vốn kéo dài</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-slate-900 tracking-tighter">{(stats.totalCarriedOver > 0 ? (stats.totalDisCarriedOver / stats.totalCarriedOver) * 100 : 0).toFixed(1)}</span>
+                      <span className="text-xl font-bold text-amber-600">%</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Tổng giải ngân (CĐT)</p>
+                    <p className="text-2xl font-mono font-bold text-slate-800">{stats.totalDisCarriedOver.toLocaleString()}<span className="text-[10px] ml-1 uppercase">tỷ</span></p>
+                  </div>
+                </div>
+
+                {/* Breakdown Carried Over */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-white rounded-xl border border-amber-100/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-amber-600/70 uppercase">NSTW</span>
+                      <span className="text-xs font-black text-slate-700 font-mono">{stats.carriedOverPMDis.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-amber-100/30">
+                      <span className="text-[9px] text-amber-600/50 uppercase font-bold">Tỷ lệ</span>
+                      <span className="text-[10px] font-bold text-amber-600">{(stats.carriedOverPMTotal > 0 ? (stats.carriedOverPMDis / stats.carriedOverPMTotal) * 100 : 0).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-amber-100/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-amber-600/70 uppercase">NSĐP</span>
+                      <span className="text-xs font-black text-slate-700 font-mono">{stats.carriedOverProvinceDis.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-amber-100/30">
+                      <span className="text-[9px] text-amber-600/50 uppercase font-bold">Tỷ lệ</span>
+                      <span className="text-[10px] font-bold text-amber-600">{(stats.carriedOverProvinceTotal > 0 ? (stats.carriedOverProvinceDis / stats.carriedOverProvinceTotal) * 100 : 0).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Treasury Carried Over */}
+                <div className="p-3 bg-rose-50/30 rounded-xl border border-rose-100/50 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 bg-white text-rose-600 text-[8px] font-bold rounded uppercase border border-rose-100 shadow-sm">Kho bạc đối chiếu</span>
+                      <span className="text-[10px] font-bold text-slate-600 font-mono">{stats.treasuryTotalDisCarriedOver.toLocaleString()} tỷ</span>
+                    </div>
+                    <span className="text-[10px] font-black text-rose-500 font-mono">{(stats.totalCarriedOver > 0 ? (stats.treasuryTotalDisCarriedOver / stats.totalCarriedOver) * 100 : 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-rose-100/30">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] text-rose-400 uppercase font-bold">NSTW</span>
+                      <span className="text-[9px] font-bold text-slate-600 font-mono">{stats.treasuryCarriedOverPMDis.toLocaleString()} tỷ</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] text-rose-400 uppercase font-bold">NSĐP</span>
+                      <span className="text-[9px] font-bold text-slate-600 font-mono">{stats.treasuryCarriedOverProvinceDis.toLocaleString()} tỷ</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
