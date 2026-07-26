@@ -4,8 +4,13 @@ export interface Project {
   district: string;
   commune: string;
   totalInvestment: number; // Tổng mức đầu tư dự án
-  pmCapital: number; // Vốn Thủ tướng giao (giữ lại để tính toán)
-  provinceCapital: number; // Tổng vốn được giao trong năm
+  totalInvestmentNSTW?: number; // Ngân sách Trung ương trong Tổng mức đầu tư
+  totalInvestmentNSDP?: number; // Ngân sách Địa phương trong Tổng mức đầu tư
+  totalInvestmentOther?: number; // Nguồn vốn khác trong Tổng mức đầu tư
+  totalInvestmentCTMTQG_NSTW?: number; // Deprecated/legacy alias
+  totalInvestmentCTMTQG_NSDP?: number; // Deprecated/legacy alias
+  pmCapital: number; // Vốn Thủ tướng/NSTW giao năm 2026
+  provinceCapital: number; // Vốn Tỉnh/NSĐP giao năm 2026
   carriedOverPMCapital: number; // Vốn NSTW kéo dài từ năm trước
   carriedOverProvinceCapital: number; // Vốn NSĐP kéo dài từ năm trước
   pmAssigned: number;
@@ -15,6 +20,10 @@ export interface Project {
   assignedCapital: number; // Vốn đã giao
   unassignedCapital: number; // Vốn chưa giao
   disbursed: number; // Tổng vốn đã giải ngân (Chủ đầu tư báo cáo)
+  disbursedNSTW?: number;
+  disbursedNSDP?: number;
+  disbursedCTMTQG_NSTW?: number;
+  disbursedCTMTQG_NSDP?: number;
   pmDisbursed2026: number;
   provinceDisbursed2026: number;
   carriedOverPMDisbursed: number;
@@ -34,6 +43,58 @@ export interface Project {
   authorityLevel?: 'Trung ương' | 'Tỉnh' | 'Huyện' | 'Xã';
   difficulty?: string;
   solution?: string;
+  registeredCurrentMonth?: number;
+  registeredNextMonth?: number;
+  
+  // Tùy chọn CTMTQG trong Vốn Giao
+  isNationalTargetProgram?: boolean;
+  nationalTargetProgramType?: string;
+  assignedCTMTQG_NSTW?: number; // CTMTQG NSTW trong Vốn Giao
+  assignedCTMTQG_NSDP?: number; // CTMTQG NSĐP trong Vốn Giao
+}
+
+export function getProjectInvestmentBreakdown(p: Project) {
+  const total = p.totalInvestment || 0;
+  
+  const nstw = p.totalInvestmentNSTW !== undefined ? p.totalInvestmentNSTW : Math.round(total * 0.6);
+  const nsdp = p.totalInvestmentNSDP !== undefined ? p.totalInvestmentNSDP : Math.round(total * 0.3);
+  const other = p.totalInvestmentOther !== undefined ? p.totalInvestmentOther : Math.max(0, total - nstw - nsdp);
+
+  return {
+    total,
+    nstw,
+    nsdp,
+    other,
+    nstwPercent: total > 0 ? ((nstw / total) * 100).toFixed(1) : '0.0',
+    nsdpPercent: total > 0 ? ((nsdp / total) * 100).toFixed(1) : '0.0',
+    otherPercent: total > 0 ? ((other / total) * 100).toFixed(1) : '0.0',
+  };
+}
+
+export function getProjectAssignedCapitalBreakdown(p: Project) {
+  const nstw = (p.pmCapital || 0) + (p.carriedOverPMCapital || 0);
+  const nsdp = (p.provinceCapital || 0) + (p.carriedOverProvinceCapital || 0);
+  const totalAssigned = nstw + nsdp;
+
+  const isMTQG = !!p.isNationalTargetProgram;
+  const mtqgType = p.nationalTargetProgramType || 'Chương trình 1: Phát triển KTXH vùng đồng bào DTTS & MN';
+  const ctmtqgNstw = p.assignedCTMTQG_NSTW !== undefined 
+    ? p.assignedCTMTQG_NSTW 
+    : (p.totalInvestmentCTMTQG_NSTW !== undefined ? p.totalInvestmentCTMTQG_NSTW : (isMTQG ? Math.round(nstw * 0.5) : 0));
+  const ctmtqgNsdp = p.assignedCTMTQG_NSDP !== undefined 
+    ? p.assignedCTMTQG_NSDP 
+    : (p.totalInvestmentCTMTQG_NSDP !== undefined ? p.totalInvestmentCTMTQG_NSDP : (isMTQG ? Math.round(nsdp * 0.5) : 0));
+
+  return {
+    totalAssigned,
+    nstw,
+    nsdp,
+    isMTQG,
+    mtqgType,
+    ctmtqgNstw,
+    ctmtqgNsdp,
+    ctmtqgTotal: ctmtqgNstw + ctmtqgNsdp
+  };
 }
 
 export interface MonthlyData {
@@ -126,6 +187,10 @@ export const MOCK_PROJECTS: Project[] = [
     district: 'Cấp tỉnh', 
     commune: 'Ban QLDA ĐTXD các công trình giao thông', 
     totalInvestment: 14331,
+    totalInvestmentNSTW: 9315,
+    totalInvestmentNSDP: 5016,
+    totalInvestmentCTMTQG_NSTW: 3500,
+    totalInvestmentCTMTQG_NSDP: 2100,
     pmCapital: 4800,
     provinceCapital: 5000,
     carriedOverPMCapital: 1200,
